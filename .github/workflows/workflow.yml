@@ -1,0 +1,49 @@
+name: Pull Request Check
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+
+            async function run() {
+              try {
+                const pull_request = context.payload.pull_request;
+
+                if (!pull_request) {
+                  console.log("This is not a pull request.");
+                  return;
+                }
+
+                const body = pull_request.body;
+
+                if (!body || body.trim() === "") {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pull_request.number,
+                    body: "해당 PR은 가이드라인을 준수하지 않았습니다. 때문에 PR을 닫도록 하겠습니다. 가이드라인을 준수해서 다시 PR을 요청해주세요. 😊"
+                  });
+
+                  await github.rest.pulls.update({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: pull_request.number,
+                    state: "closed"
+                  });
+                }
+              } catch (error) {
+                console.error("❌ 워크플로우 실행 중 오류 발생:", error.message);
+              }
+            }
+
+            run();
